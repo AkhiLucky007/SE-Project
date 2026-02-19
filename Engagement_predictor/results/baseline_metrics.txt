@@ -1,0 +1,13 @@
+Model: XGBoost
+Data size: 100,000 samples
+Features:
+ - TF-IDF (8000 features, ngram=(1,2))
+ - Metadata (hour, day_of_week, followers_log, following_log, num_posts_log, is_business_account)
+
+Accuracy: 0.58
+Macro F1: 0.58
+
+Class F1:
+Low: 0.65
+Medium: 0.43
+High: 0.65
