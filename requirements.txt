@@ -3,6 +3,6 @@ numpy
 scikit-learn
 xgboost
 datasets
-torch
 transformers
+torch
 scipy
