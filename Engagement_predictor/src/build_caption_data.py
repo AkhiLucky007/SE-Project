@@ -30,7 +30,7 @@ tfidf = joblib.load("src/tfidf_vectorizer.pkl")
 # -----------------------------
 print("🚀 Creating TF-IDF matrix...")
 
-X_tfidf = tfidf.transform(df["description"]).toarray()
+X_tfidf = tfidf.transform(df["description"])
 
 # -----------------------------
 # 💾 Save files
