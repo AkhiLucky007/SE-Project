@@ -13,6 +13,7 @@ from src.ab_testing import CaptionABTester
 from src.hashtag_module import HashtagRecommender
 from src.predict import Predictor
 from src.time_optimizer import TimeOptimizer
+from src.llama_caption_engine import LlamaCaptionEngine
 
 # -----------------------------
 # 🔥 Load model (for A/B testing)
@@ -27,6 +28,7 @@ model = joblib.load(
 caption_analyzer = CaptionAnalyzer()
 estimator = EngagementEstimator()
 tester = CaptionABTester(model)
+llama_engine = LlamaCaptionEngine()
 
 predictor = Predictor()
 time_optimizer = TimeOptimizer(predictor)
@@ -128,8 +130,10 @@ if st.button("Predict"):
     for s in result["suggestions"]:
         st.write("-", s)
 
-    optimized_caption = caption_analyzer.pick_best_caption(
-    description, predictor, base_data)
+    optimized_caption = llama_engine.generate_caption(description)
+
+    st.subheader("🤖 AI Optimized Caption")
+    st.write(optimized_caption)
 
     st.subheader("✍️ Optimized Caption (AI)")
     st.write(optimized_caption)
