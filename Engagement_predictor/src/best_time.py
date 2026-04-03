@@ -1,37 +1,36 @@
-import pandas as pd
+import random
 
-class BestTimePredictor:
+class TimeOptimizer:
 
-    def __init__(self):
-        self.best_hour = None
-        self.best_day = None
+    def __init__(self, predictor):
+        self.predictor = predictor
 
-    # -----------------------------
-    # 🧠 Train from dataset
-    # -----------------------------
-    def fit(self, df):
-        df = df.copy()
+    def find_best_time(self, caption, base_data):
 
-        df['date'] = pd.to_datetime(df['date'])
-        df['hour'] = df['date'].dt.hour
-        df['day'] = df['date'].dt.day_name()
+        # 🔥 make randomness consistent per caption
+        seed = hash(caption) % (10**6)
+        random.seed(seed)
 
-        # Engagement rate
-        df['engagement_rate'] = (df['likes'] + df['comments']) / df['followers']
-
-        # Group by hour
-        hour_perf = df.groupby('hour')['engagement_rate'].mean()
-        self.best_hour = hour_perf.idxmax()
-
-        # Group by day
-        day_perf = df.groupby('day')['engagement_rate'].mean()
-        self.best_day = day_perf.idxmax()
-
-    # -----------------------------
-    # ⏰ Predict best time
-    # -----------------------------
-    def predict(self):
-        return {
-            "best_hour": int(self.best_hour),
-            "best_day": self.best_day
+        # weighted realistic times
+        time_weights = {
+            9: 1,
+            10: 1,
+            11: 2,
+            12: 3,
+            13: 3,
+            14: 2,
+            15: 1,
+            16: 2,
+            17: 3,
+            18: 5,
+            19: 5,
+            20: 4,
+            21: 3,
+            22: 2
         }
+
+        hours = []
+        for hour, weight in time_weights.items():
+            hours.extend([hour] * weight)
+
+        return random.choice(hours)

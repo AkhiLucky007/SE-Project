@@ -7,12 +7,14 @@ from sklearn.metrics.pairwise import cosine_similarity
 class CaptionAnalyzer:
 
     def __init__(self):
+
         base_path = os.path.dirname(__file__)
 
-        # Load retrieval data
         self.corpus = joblib.load(os.path.join(base_path, "caption_corpus.pkl"))
-        self.tfidf = joblib.load(os.path.join(base_path, "tfidf_vectorizer.pkl"))
-        self.tfidf_matrix = joblib.load(os.path.join(base_path, "tfidf_matrix.pkl"))
+        self.embeddings = joblib.load(os.path.join(base_path, "caption_embeddings.pkl"))
+
+        self.use_embeddings = True
+        
 
     # -----------------------------
     # 🧠 Feature extraction
@@ -84,10 +86,11 @@ class CaptionAnalyzer:
     # 🔍 Retrieve similar captions
     # -----------------------------
     def get_similar_captions(self, caption, top_k=5):
-        vec = self.tfidf.transform([caption])
-        sims = cosine_similarity(vec, self.tfidf_matrix)
 
-        idx = sims[0].argsort()[-top_k:][::-1]
+        q_emb = self.embed(caption)
+        sims = cosine_similarity([q_emb], self.embeddings)[0]
+
+        idx = sims.argsort()[-top_k:][::-1]
         return [self.corpus[i] for i in idx]
 
     # -----------------------------

@@ -1,65 +1,36 @@
-import numpy as np
 import pandas as pd
 import joblib
 import os
-from transformers import DistilBertTokenizer, DistilBertModel
-import torch
-
-
 
 class Predictor:
 
     def __init__(self):
-        # Load model
-        model_path = os.path.join(os.path.dirname(__file__), "engagement_model.pkl")
-        self.model = joblib.load(model_path)
 
-        # Load BERT
-        self.device = torch.device("cpu")
-        self.tokenizer = DistilBertTokenizer.from_pretrained('distilbert-base-uncased')
-        self.bert = DistilBertModel.from_pretrained('distilbert-base-uncased')
-        self.bert.eval()
+        base_path = os.path.dirname(__file__)
 
-        # TF-IDF (⚠️ IMPORTANT: must match training)
-        tfidf_path = os.path.join(os.path.dirname(__file__), "tfidf_vectorizer.pkl")
-        self.tfidf = joblib.load(tfidf_path)
-
-    # -----------------------------
-    # BERT embeddings
-    # -----------------------------
-    def get_bert_embedding(self, text):
-        inputs = self.tokenizer(
-            text,
-            return_tensors="pt",
-            truncation=True,
-            padding=True,
-            max_length=128
+        # Load trained engagement model
+        self.model = joblib.load(
+            os.path.join(base_path, "engagement_model.pkl")
         )
 
-        with torch.no_grad():
-            outputs = self.bert(**inputs)
-
-        return outputs.last_hidden_state[:, 0, :].numpy()
-
     # -----------------------------
-    # Predict
+    # 🔮 Predict engagement
     # -----------------------------
-    def predict(self, df):
-        text = df['description'].astype(str).tolist()
+    def predict(self, df: pd.DataFrame):
 
-        # BERT
-        X_bert = np.vstack([self.get_bert_embedding(t) for t in text])
+        # These are the ONLY features your model needs
+        meta_cols = [
+            'hour',
+            'day_of_week',
+            'followers',
+            'following',
+            'num_posts',
+            'is_business_account'
+        ]
 
-        # TF-IDF (fit on input — not perfect but works for now)
-        X_tfidf = self.tfidf.transform(text).toarray()
+        X = df[meta_cols].astype(float).values
 
-        # Metadata
-        meta_cols = ['hour','day_of_week','followers',
-                     'following','num_posts','is_business_account']
+        pred = self.model.predict(X)
+        probs = self.model.predict_proba(X)
 
-        X_meta = df[meta_cols].astype(float).values
-
-        # Combine
-        X = np.hstack([X_bert, X_tfidf, X_meta])
-
-        return self.model.predict(X), self.model.predict_proba(X)
+        return pred, probs

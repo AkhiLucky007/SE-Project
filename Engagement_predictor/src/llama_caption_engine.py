@@ -1,6 +1,8 @@
 import torch
-import pickle
+import joblib
 import numpy as np
+import os
+
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
@@ -10,13 +12,13 @@ class LlamaCaptionEngine:
 
     def __init__(self):
 
+        base_path = os.path.dirname(__file__)
+
         print("Loading embeddings...")
 
-        with open("caption_embeddings.pkl", "rb") as f:
-            self.embeddings = pickle.load(f)
+        self.embeddings = joblib.load(os.path.join(base_path, "caption_embeddings.pkl"))
+        self.corpus = joblib.load(os.path.join(base_path, "caption_corpus.pkl"))
 
-        with open("caption_corpus.pkl", "rb") as f:
-            self.corpus = pickle.load(f)
 
         print("Loading retriever model...")
 
@@ -24,75 +26,81 @@ class LlamaCaptionEngine:
             "sentence-transformers/all-MiniLM-L6-v2"
         )
 
-        print("Loading LLaMA model...")
+        print("Loading LLM model...")
 
-        model_name = "meta-llama/Llama-2-7b-chat-hf"
+        # 🔥 IMPORTANT: use lightweight model locally
+        model_name = "distilgpt2"
 
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-
-        self.model = AutoModelForCausalLM.from_pretrained(
-            model_name,
-            device_map="auto",
-            torch_dtype=torch.float16
-        )
+        self.model = AutoModelForCausalLM.from_pretrained(model_name)
 
         print("Caption engine ready")
 
-
+    # -----------------------------
+    # 🔍 Retrieval
+    # -----------------------------
     def retrieve_examples(self, caption, k=5):
 
         query_emb = self.embedder.encode([caption])
-
         sims = cosine_similarity(query_emb, self.embeddings)[0]
 
         idx = np.argsort(sims)[-k:]
-
         return [self.corpus[i] for i in idx]
 
-
-    def generate_caption(self, caption):
+    # -----------------------------
+    # ✍️ Generate captions (MULTIPLE)
+    # -----------------------------
+    def generate_captions(self, caption, n=5):
 
         examples = self.retrieve_examples(caption)
-
         example_text = "\n".join(examples)
 
         prompt = f"""
-You are an Instagram caption expert.
-
-Original caption:
+Instagram caption:
 {caption}
 
-Similar captions:
-{example_text}
-
-Rewrite a better Instagram caption.
-Keep tone natural and engaging.
-Avoid shortening too much.
-
-New caption:
+Write a better engaging version:
 """
 
-        inputs = self.tokenizer(prompt, return_tensors="pt").to(self.model.device)
+        inputs = self.tokenizer(prompt, return_tensors="pt")
 
         outputs = self.model.generate(
             **inputs,
-            max_new_tokens=80,
+            max_new_tokens=60,
             temperature=0.9,
             do_sample=True,
-            num_return_sequences=3
+            num_return_sequences=n
         )
 
         captions = []
 
         for out in outputs:
-
-            decoded = self.tokenizer.decode(
-                out,
-                skip_special_tokens=True
-            )
-
-            captions.append(
-                decoded.split("New caption:")[-1].strip()
-            )
+            decoded = self.tokenizer.decode(out, skip_special_tokens=True)
+            captions.append(decoded.replace(prompt, "").strip())
 
         return captions
+
+    # -----------------------------
+    # 🏷️ Hashtag generation
+    # -----------------------------
+    def generate_hashtags(self, caption):
+
+        prompt = f"""
+Generate 8 Instagram hashtags for:
+{caption}
+
+Only hashtags:
+"""
+
+        inputs = self.tokenizer(prompt, return_tensors="pt")
+
+        output = self.model.generate(
+            **inputs,
+            max_new_tokens=30,
+            temperature=0.9,
+            do_sample=True
+        )
+
+        decoded = self.tokenizer.decode(output[0], skip_special_tokens=True)
+
+        return decoded.split("\n")[-1].strip()

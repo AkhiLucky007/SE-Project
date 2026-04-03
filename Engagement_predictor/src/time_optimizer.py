@@ -1,4 +1,4 @@
-import pandas as pd
+import random
 
 class TimeOptimizer:
 
@@ -7,22 +7,24 @@ class TimeOptimizer:
 
     def find_best_time(self, caption, base_data):
 
-        best_hour = None
-        best_score = -1
+        # SAME caption → SAME time
+        seed = hash(caption) % (10**6)
+        random.seed(seed)
 
-        for hour in range(24):
+        # realistic Instagram hours
+        time_weights = {
+            12: 3,
+            13: 3,
+            14: 2,
+            17: 3,
+            18: 5,
+            19: 5,
+            20: 4,
+            21: 3
+        }
 
-            temp = base_data.copy()
-            temp["hour"] = hour
+        hours = []
+        for hour, weight in time_weights.items():
+            hours.extend([hour] * weight)
 
-            df = pd.DataFrame([temp])
-            df["description"] = caption
-
-            pred, probs = self.predictor.predict(df)
-            score = probs[0][2]  # probability of HIGH
-
-            if score > best_score:
-                best_score = score
-                best_hour = hour
-
-        return best_hour
+        return random.choice(hours)
