@@ -2,42 +2,52 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 import requests
 import os
-import hashlib
-
+from dotenv import load_dotenv
+load_dotenv()
 app = FastAPI()
 
 API_KEY = os.getenv("GROQ_API_KEY")
-
 
 class CaptionRequest(BaseModel):
     caption: str
 
 
 def fallback_caption(original):
+    return f"{original.capitalize()} — capturing moments that matter ✨"
 
-    words = original.split()
 
-    if len(words) <= 3:
-        return f"{original} ✨ Moments like this matter."
+def fallback_hashtags(text):
+    words = text.lower().split()
+    base = [w for w in words if len(w) > 3][:5]
+    tags = [f"#{w}" for w in base]
 
-    return f"{original.capitalize()} — living this moment fully."
+    # ensure always 8
+    while len(tags) < 8:
+        tags.append("#lifestyle")
+
+    return " ".join(tags[:8])
 
 
 @app.post("/generate")
 def generate(req: CaptionRequest):
 
-    url = "https://api.groq.com/openai/v1/chat/completions"
-
     prompt = f"""
-Rewrite this Instagram caption.
+You are a top Instagram creator.
 
-RULES:
-- MUST change wording
-- KEEP same meaning
-- SHORT
-- HUMAN
-- ENGAGING
-- DO NOT repeat original sentence structure
+TASK:
+Rewrite the caption into a HIGH-ENGAGEMENT version.
+
+STRICT RULES:
+- MUST NOT repeat original sentence
+- MUST change wording significantly
+- Keep same meaning
+- Add emotion / vibe / storytelling
+- Keep it SHORT and natural
+
+HASHTAG RULES:
+- MUST be specific to caption
+- NO generic tags like #instagram #viral
+- Mix niche + broad
 
 Caption:
 {req.caption}
@@ -48,11 +58,11 @@ CAPTION:
 <new caption>
 
 HASHTAGS:
-8 relevant hashtags
+#tag1 #tag2 #tag3 #tag4 #tag5 #tag6 #tag7 #tag8
 """
 
     response = requests.post(
-        url,
+        "https://api.groq.com/openai/v1/chat/completions",
         headers={
             "Authorization": f"Bearer {API_KEY}",
             "Content-Type": "application/json"
@@ -60,34 +70,41 @@ HASHTAGS:
         json={
             "model": "llama-3.1-8b-instant",
             "messages": [{"role": "user", "content": prompt}],
-            "temperature": 1.5,
-            "presence_penalty": 2
+            "temperature": 1.3,
+            "top_p": 0.9,
+            "presence_penalty": 1.5
         },
         timeout=30
     )
 
     data = response.json()
 
+    # ❌ API failed → fallback
     if "choices" not in data:
-        return {"result": fallback_caption(req.caption)}
+        return {
+            "result": f"""
+CAPTION:
+{fallback_caption(req.caption)}
+
+HASHTAGS:
+{fallback_hashtags(req.caption)}
+"""
+        }
 
     output = data["choices"][0]["message"]["content"]
 
-    # HARD GUARANTEE caption != original
+    # 🚨 HARD FIX → if model still copies input
     if req.caption.lower().strip() in output.lower():
 
-        improved = fallback_caption(req.caption)
-
-        hashtags = "#instagram #content #creator #engagement #post #photo #instadaily #social"
+        new_caption = fallback_caption(req.caption)
+        new_tags = fallback_hashtags(req.caption)
 
         output = f"""
 CAPTION:
-{improved}
+{new_caption}
 
 HASHTAGS:
-{hashtags}
+{new_tags}
 """
 
-    return {
-        "result": output
-    }
+    return {"result": output} 
