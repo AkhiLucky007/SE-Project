@@ -1,11 +1,11 @@
 import torch
-import joblib
+import joblib # type: ignore
 import numpy as np
 import os
 
-from transformers import AutoTokenizer, AutoModelForCausalLM
-from sentence_transformers import SentenceTransformer
-from sklearn.metrics.pairwise import cosine_similarity
+from transformers import AutoTokenizer, AutoModelForCausalLM # type: ignore
+from sentence_transformers import SentenceTransformer # type: ignore
+from sklearn.metrics.pairwise import cosine_similarity # type: ignore
 
 
 class LlamaCaptionEngine:

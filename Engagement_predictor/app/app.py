@@ -2,11 +2,11 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-import streamlit as st
+import streamlit as st # type: ignore
 import pandas as pd
-import joblib
+import joblib # type: ignore
 import numpy as np
-import requests
+import requests # type: ignore
 
 from src.engagement_utils import EngagementEstimator
 from src.ab_testing import CaptionABTester
